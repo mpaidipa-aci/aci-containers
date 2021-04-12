@@ -120,6 +120,7 @@ func (cont *AciController) handleEpgAnnotationUpdate(key string, faultCode int, 
 	if notExist && egval.Name != "" {
 		desc := fmt.Sprintf("Annotation failed for  %s, Reason being: Cannot resolve the EPG %s for the tenant %s and app-profile %s",
 			entity, egval.Name, egval.Tenant, egval.AppProfile)
+		fmt.Printf("-------%s", desc)
 		faultcode := strconv.Itoa(faultCode)
 		severity := strconv.Itoa(severity)
 
