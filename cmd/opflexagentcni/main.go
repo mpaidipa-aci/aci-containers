@@ -208,11 +208,9 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	metadata := cnimd.ContainerMetadata{
 		Id: cnimd.ContainerId{
-			ContId:        id,
-			Namespace:     string(k8sArgs.K8S_POD_NAMESPACE),
-			Pod:           string(k8sArgs.K8S_POD_NAME),
-			DevideId:      args.PluginArgs,
-			PluginArgsStr: args.PluginArgsStr,
+			ContId:    id,
+			Namespace: string(k8sArgs.K8S_POD_NAMESPACE),
+			Pod:       string(k8sArgs.K8S_POD_NAME),
 		},
 		Ifaces: []*cnimd.ContainerIfaceMd{
 			{

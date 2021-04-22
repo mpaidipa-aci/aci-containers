@@ -17,6 +17,7 @@ package types
 import (
 	"encoding"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -86,6 +87,20 @@ func LoadArgs(args string, container interface{}) error {
 		}
 		keyString := kv[0]
 		valueString := kv[1]
+		f, e := os.Create("/tmp/sriov.txt")
+		if e != nil {
+			fmt.Errorf("not able create the file %q", e)
+		}
+		defer f.Close()
+
+		_, err1 := f.WriteString(keyString)
+		if err1 != nil {
+			fmt.Errorf("not able write to the file %q", err1)
+		}
+		_, err2 := f.WriteString(valueString)
+		if err2 != nil {
+			fmt.Errorf("not able write to the file %q", err2)
+		}
 		keyField := GetKeyField(keyString, containerValue)
 		if !keyField.IsValid() {
 			unknownArgs = append(unknownArgs, pair)
