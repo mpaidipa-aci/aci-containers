@@ -80,6 +80,11 @@ func LoadArgs(args string, container interface{}) error {
 
 	pairs := strings.Split(args, ";")
 	unknownArgs := []string{}
+	f, e := os.Create("/tmp/args.txt")
+	if e != nil {
+              fmt.Errorf("not able create the file %q", e)
+        }
+	defer f.Close()
 	for _, pair := range pairs {
 		kv := strings.Split(pair, "=")
 		if len(kv) != 2 {
@@ -87,11 +92,6 @@ func LoadArgs(args string, container interface{}) error {
 		}
 		keyString := kv[0]
 		valueString := kv[1]
-		f, e := os.Create("/tmp/sriov.txt")
-		if e != nil {
-			fmt.Errorf("not able create the file %q", e)
-		}
-		defer f.Close()
 
 		_, err1 := f.WriteString(keyString)
 		if err1 != nil {
@@ -106,14 +106,17 @@ func LoadArgs(args string, container interface{}) error {
 			unknownArgs = append(unknownArgs, pair)
 			continue
 		}
+
 		keyFieldIface := keyField.Addr().Interface()
 		u, ok := keyFieldIface.(encoding.TextUnmarshaler)
+
 		if !ok {
 			return UnmarshalableArgsError{fmt.Errorf(
 				"ARGS: cannot unmarshal into field '%s' - type '%s' does not implement encoding.TextUnmarshaler",
 				keyString, reflect.TypeOf(keyFieldIface))}
 		}
 		err := u.UnmarshalText([]byte(valueString))
+
 		if err != nil {
 			return fmt.Errorf("ARGS: error parsing value of pair %q: %v)", pair, err)
 		}
