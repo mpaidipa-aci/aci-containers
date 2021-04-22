@@ -260,6 +260,10 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 		"container": metadata.Id.ContId,
 	})
 
+	for _, val := range metadata.Id.DevideId {
+		logger.Debug("plugin args", val)
+	}
+
 	podKey := makePodKey(metadata.Id.Namespace, metadata.Id.Pod)
 	logger.Debug("Setting up veth")
 	if len(metadata.Ifaces) == 0 {

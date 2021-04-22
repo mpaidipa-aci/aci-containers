@@ -53,6 +53,7 @@ type K8SArgs struct {
 	K8S_POD_NAME               types.UnmarshallableString
 	K8S_POD_NAMESPACE          types.UnmarshallableString
 	K8S_POD_INFRA_CONTAINER_ID types.UnmarshallableString
+	K8S_SRIOV_DEVICE_ID        types.UnmarshallableString
 }
 
 type NetConf struct {
@@ -207,9 +208,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	metadata := cnimd.ContainerMetadata{
 		Id: cnimd.ContainerId{
-			ContId:    id,
-			Namespace: string(k8sArgs.K8S_POD_NAMESPACE),
-			Pod:       string(k8sArgs.K8S_POD_NAME),
+			ContId:        id,
+			Namespace:     string(k8sArgs.K8S_POD_NAMESPACE),
+			Pod:           string(k8sArgs.K8S_POD_NAME),
+			DevideId:      args.PluginArgs,
+			PluginArgsStr: args.PluginArgsStr,
 		},
 		Ifaces: []*cnimd.ContainerIfaceMd{
 			{
