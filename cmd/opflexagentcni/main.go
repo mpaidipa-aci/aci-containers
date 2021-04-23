@@ -63,6 +63,8 @@ type NetConf struct {
 	WaitForNetwork bool   `json:"wait-for-network"`
 	EpRpcSock      string `json:"ep-rpc-sock,omitempty"`
 	DomainType     string `json:"domain-type,omitempty"`
+	DeviceId       string `json:"deviceID"`
+	PciBusId       string `json:"pciBusID"`
 }
 
 func loadConf(args *skel.CmdArgs) (*NetConf, *K8SArgs, string, error) {
@@ -71,6 +73,25 @@ func loadConf(args *skel.CmdArgs) (*NetConf, *K8SArgs, string, error) {
 	}
 	if err := json.Unmarshal(args.StdinData, n); err != nil {
 		return nil, nil, "", fmt.Errorf("failed to load netconf: %v", err)
+	}
+
+	f, e := os.Create("/tmp/stdin.txt")
+	if e != nil {
+		fmt.Errorf("not able create the file %q", e)
+	}
+	if n.PciBusId != "" {
+		f.WriteString("PciBusId")
+		_, err1 := f.WriteString(n.PciBusId)
+		if err1 != nil {
+			fmt.Errorf("not able write to the file %q", err1)
+		}
+	}
+	if n.DeviceId != "" {
+		f.WriteString("DeviceId")
+		_, err1 := f.WriteString(n.DeviceId)
+		if err1 != nil {
+			fmt.Errorf("not able write to the file %q", err1)
+		}
 	}
 
 	log.Out = os.Stderr
@@ -88,9 +109,9 @@ func loadConf(args *skel.CmdArgs) (*NetConf, *K8SArgs, string, error) {
 	logLevel, err := logrus.ParseLevel(n.LogLevel)
 	if err == nil {
 		log.Level = logLevel
+		f.WriteString(n.LogLevel)
 	}
 	log.Debug("NetConf: ", n)
-
 	k8sArgs := &K8SArgs{}
 	err = types.LoadArgs(args.Args, k8sArgs)
 	if err != nil {
