@@ -37,11 +37,11 @@ type ContainerIfaceMd struct {
 }
 
 type ContainerId struct {
-	Namespace     string      `json:"namespace,omitempty"`
-	Pod           string      `json:"pod,omitempty"`
-	ContId        string      `json:"cont-id,omitempty"`
-	PluginArgsStr string      `json:"pluginargs-str,omitempty"`
-	DevideId      [][2]string `json:"devide-id,omitempty"`
+	Namespace     string `json:"namespace,omitempty"`
+	Pod           string `json:"pod,omitempty"`
+	ContId        string `json:"cont-id,omitempty"`
+	PluginArgsStr string `json:"pluginargs-str,omitempty"`
+	DevideId      string `json:"devideId,omitempty"`
 }
 
 type ContainerMetadata struct {

@@ -20,6 +20,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/Mellanox/sriovnet"
 	cnicur "github.com/containernetworking/cni/pkg/types/current"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ipam"
@@ -84,9 +85,22 @@ type SetupVethArgs struct {
 	Ip      net.IP
 }
 
+type SetupVfArgs struct {
+	Sandbox      string
+	IfName       string
+	Mtu          int
+	Ip           net.IP
+	sriovDevieId string
+}
+
 type SetupVethResult struct {
 	HostVethName string
 	Mac          string
+}
+
+type SetupVfResult struct {
+	HostVfName string
+	Mac        string
 }
 
 func runSetupVeth(sandbox string, ifName string,
@@ -94,6 +108,14 @@ func runSetupVeth(sandbox string, ifName string,
 	result := &SetupVethResult{}
 	err := PluginCloner.runPluginCmd("ClientRPC.SetupVeth",
 		&SetupVethArgs{sandbox, ifName, mtu, ip}, result)
+	return result.HostVethName, result.Mac, err
+}
+
+func runSetupVf(sandbox string, ifName string,
+	mtu int, ip net.IP, sriovDevieId string) (string, string, error) {
+	result := &SetupVethResult{}
+	err := PluginCloner.runPluginCmd("ClientRPC.SetupVfRep",
+		&SetupVfArgs{sandbox, ifName, mtu, ip, sriovDevieId}, result)
 	return result.HostVethName, result.Mac, err
 }
 
@@ -131,6 +153,75 @@ func (*ClientRPC) SetupVeth(args *SetupVethArgs, result *SetupVethResult) error 
 		}
 
 		result.Mac = contVeth.Attrs().HardwareAddr.String()
+		return nil
+	})
+}
+
+func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
+	netns, err := ns.GetNS(args.Sandbox)
+	if err != nil {
+		return fmt.Errorf("failed to open netns %q: %v", args.Sandbox, err)
+	}
+	defer netns.Close()
+	return netns.Do(func(hostNS ns.NetNS) error {
+		uplink, err := sriovnet.GetUplinkRepresentor(args.sriovDevieId)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve uplink interface for pci address %s: %v", args.sriovDevieId, err)
+		}
+		fmt.Print("uplink----", uplink)
+		vfIndex, err := sriovnet.GetVfIndexByPciAddress(args.sriovDevieId)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve vfIndex for pci address %s: %v", args.sriovDevieId, err)
+		}
+		fmt.Print("vfIndex----", vfIndex)
+		vfRep, err := sriovnet.GetVfRepresentor(uplink, vfIndex)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve vf representator for pci address %s: %v", args.sriovDevieId, err)
+		}
+		fmt.Print("vfRep----", vfRep)
+		// rename eth0 to vf rep
+		contLink, err := netlink.LinkByName(args.IfName)
+		if err != nil {
+			return err
+		}
+		err = netlink.LinkSetDown(contLink)
+		fmt.Print("setting the link down")
+
+		if err != nil {
+			return fmt.Errorf("Failed to bring down the link for %s:%v", args.IfName, err)
+		}
+		err = netlink.LinkSetName(contLink, vfRep)
+		if err != nil {
+			return fmt.Errorf("Failed to rename the interface %s to vfrep:%v", args.IfName, err)
+		}
+		fmt.Print("setting the link name")
+
+		err = netlink.LinkSetUp(contLink)
+		if err != nil {
+			return fmt.Errorf("Failed to bring up the interface %s:%v", vfRep, err)
+		}
+		netDevice, err := sriovnet.GetNetDevicesFromPci(args.sriovDevieId)
+		if err != nil {
+			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.sriovDevieId, err)
+		}
+		fmt.Print(" netDevice", netDevice)
+
+		// move Vf netdevice to pod's namespace
+		vfLink, err := netlink.LinkByName(netDevice[0])
+		err = netlink.LinkSetNsFd(vfLink, int(netns.Fd()))
+		if err != nil {
+			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.sriovDevieId, err)
+		}
+		fmt.Print("fd int", int(netns.Fd()))
+		fmt.Print("netns", netns)
+
+		hostIface, err := netlink.LinkByName(vfRep)
+		if err != nil {
+			return err
+		}
+		result.HostVethName = vfRep
+		result.Mac = hostIface.Attrs().HardwareAddr.String()
+		fmt.Print("mac ", result.Mac)
 		return nil
 	})
 }
@@ -260,8 +351,8 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 		"container": metadata.Id.ContId,
 	})
 
-	for _, val := range metadata.Id.DevideId {
-		logger.Debug("plugin args", val)
+	if metadata.Id.DevideId != "" {
+		logger.Debug("plugin args", metadata.Id.DevideId)
 	}
 
 	podKey := makePodKey(metadata.Id.Namespace, metadata.Id.Pod)
@@ -284,6 +375,7 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 			mtu = 1500
 		} else {
 			mtu = agent.config.InterfaceMtu
+
 		}
 
 		if len(iface.IPs) == 0 {
@@ -295,16 +387,23 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 				return nil, err
 			}
 		}
+
 		for _, ip := range iface.IPs {
 			//There are 4 cases: IPv4-only, IPv6-only, dual stack with either IPv4 or IPv6 as the first address.
 			//We are guaranteed to derive the MAC address from IPv4 if it is assigned
 			if ip.Address.IP != nil && ip.Address.IP.To4() != nil {
-				iface.HostVethName, iface.Mac, err =
-					runSetupVeth(iface.Sandbox, iface.Name, mtu, ip.Address.IP)
-				if err != nil {
-					return nil, err
+				if metadata.Id.DevideId != "" {
+					iface.HostVethName, iface.Mac, err =
+						runSetupVf(iface.Sandbox, iface.Name, mtu, ip.Address.IP, metadata.Id.DevideId)
 				} else {
-					break
+
+					iface.HostVethName, iface.Mac, err =
+						runSetupVeth(iface.Sandbox, iface.Name, mtu, ip.Address.IP)
+					if err != nil {
+						return nil, err
+					} else {
+						break
+					}
 				}
 			}
 		}

@@ -1,3 +1,7 @@
+# github.com/Mellanox/sriovnet v1.0.2
+## explicit
+github.com/Mellanox/sriovnet
+github.com/Mellanox/sriovnet/pkg/utils/filesystem
 # github.com/PuerkitoBio/purell v1.1.1
 github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
@@ -376,7 +380,7 @@ github.com/sirupsen/logrus
 github.com/socketplane/libovsdb
 # github.com/soheilhy/cmux v0.1.4
 github.com/soheilhy/cmux
-# github.com/spf13/afero v1.2.2
+# github.com/spf13/afero v1.4.1
 github.com/spf13/afero
 github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.1

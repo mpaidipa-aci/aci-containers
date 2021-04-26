@@ -232,6 +232,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			ContId:    id,
 			Namespace: string(k8sArgs.K8S_POD_NAMESPACE),
 			Pod:       string(k8sArgs.K8S_POD_NAME),
+			DevideId:  n.PciBusId,
 		},
 		Ifaces: []*cnimd.ContainerIfaceMd{
 			{

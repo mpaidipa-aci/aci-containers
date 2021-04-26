@@ -54,6 +54,7 @@ require (
 	k8s.io/kubectl v0.19.3
 	k8s.io/kubernetes v1.19.3
 	sigs.k8s.io/controller-runtime v0.6.1
+	github.com/Mellanox/sriovnet v1.0.2
 )
 
 replace (
