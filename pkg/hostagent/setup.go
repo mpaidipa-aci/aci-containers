@@ -114,7 +114,7 @@ func runSetupVeth(sandbox string, ifName string,
 func runSetupVf(sandbox string, ifName string,
 	mtu int, ip net.IP, sriovDevieId string) (string, string, error) {
 	result := &SetupVethResult{}
-	err := PluginCloner.runPluginCmd("ClientRPC.SetupVfRep",
+	err := PluginCloner.runPluginCmd("ClientRPC.SetupVf",
 		&SetupVfArgs{sandbox, ifName, mtu, ip, sriovDevieId}, result)
 	return result.HostVethName, result.Mac, err
 }
