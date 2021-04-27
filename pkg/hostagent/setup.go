@@ -86,11 +86,11 @@ type SetupVethArgs struct {
 }
 
 type SetupVfArgs struct {
-	Sandbox      string
-	IfName       string
-	Mtu          int
-	Ip           net.IP
-	sriovDevieId string
+	Sandbox       string
+	IfName        string
+	Mtu           int
+	Ip            net.IP
+	SriovDeviceId string
 }
 
 type SetupVethResult struct {
@@ -112,10 +112,10 @@ func runSetupVeth(sandbox string, ifName string,
 }
 
 func runSetupVf(sandbox string, ifName string,
-	mtu int, ip net.IP, sriovDevieId string) (string, string, error) {
+	mtu int, ip net.IP, sriovDeviceId string) (string, string, error) {
 	result := &SetupVethResult{}
 	err := PluginCloner.runPluginCmd("ClientRPC.SetupVf",
-		&SetupVfArgs{sandbox, ifName, mtu, ip, sriovDevieId}, result)
+		&SetupVfArgs{sandbox, ifName, mtu, ip, sriovDeviceId}, result)
 	return result.HostVethName, result.Mac, err
 }
 
@@ -163,19 +163,19 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 	}
 	defer netns.Close()
 	return netns.Do(func(hostNS ns.NetNS) error {
-		uplink, err := sriovnet.GetUplinkRepresentor(args.sriovDevieId)
+		uplink, err := sriovnet.GetUplinkRepresentor(args.SriovDeviceId)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve uplink interface for pci address %s: %v", args.sriovDevieId, err)
+			return fmt.Errorf("failed to retrieve uplink interface for pci address %s: %v", args.SriovDeviceId, err)
 		}
 		//		fmt.Print("uplink----", uplink)
-		vfIndex, err := sriovnet.GetVfIndexByPciAddress(args.sriovDevieId)
+		vfIndex, err := sriovnet.GetVfIndexByPciAddress(args.SriovDeviceId)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve vfIndex for pci address %s: %v", args.sriovDevieId, err)
+			return fmt.Errorf("failed to retrieve vfIndex for pci address %s: %v", args.SriovDeviceId, err)
 		}
 		//		fmt.Print("vfIndex----", vfIndex)
 		vfRep, err := sriovnet.GetVfRepresentor(uplink, vfIndex)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve vf representator for pci address %s: %v", args.sriovDevieId, err)
+			return fmt.Errorf("failed to retrieve vf representator for pci address %s and vfIndex %d: %v", args.SriovDeviceId, vfIndex, err)
 		}
 		//		fmt.Print("vfRep----", vfRep)
 		// rename eth0 to vf rep
@@ -197,16 +197,16 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 		if err != nil {
 			return fmt.Errorf("Failed to bring up the interface %s:%v", vfRep, err)
 		}
-		netDevice, err := sriovnet.GetNetDevicesFromPci(args.sriovDevieId)
+		netDevice, err := sriovnet.GetNetDevicesFromPci(args.SriovDeviceId)
 		if err != nil {
-			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.sriovDevieId, err)
+			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
 		}
 		//		fmt.Print(" netDevice", netDevice)
 		// move Vf netdevice to pod's namespace
 		vfLink, err := netlink.LinkByName(netDevice[0])
 		err = netlink.LinkSetNsFd(vfLink, int(netns.Fd()))
 		if err != nil {
-			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.sriovDevieId, err)
+			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
 		}
 		//		fmt.Print("netns", netns)
 		//		fmt.Print("fd int", int(netns.Fd()))
