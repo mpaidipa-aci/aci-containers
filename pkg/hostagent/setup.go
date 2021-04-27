@@ -182,22 +182,21 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 	}
 	result.HostVethName = vfRep
 	result.Mac = hostIface.Attrs().HardwareAddr.String()
-
+	netDevice, err := sriovnet.GetNetDevicesFromPci(args.SriovDeviceId)
+	if err != nil {
+		return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
+	}
+	// move Vf netdevice to pod's namespace
+	netDeviceLink, err := netlink.LinkByName(netDevice[0])
+	if err != nil {
+		return fmt.Errorf("Failed to bring up the netlink %s :%v", netDevice[0], err)
+	}
+	err = netlink.LinkSetNsFd(netDeviceLink, int(netns.Fd()))
+	if err != nil {
+		return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
+	}
 	defer netns.Close()
 	return netns.Do(func(hostNS ns.NetNS) error {
-		netDevice, err := sriovnet.GetNetDevicesFromPci(args.SriovDeviceId)
-		if err != nil {
-			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
-		}
-		// move Vf netdevice to pod's namespace
-		netDeviceLink, err := netlink.LinkByName(netDevice[0])
-		if err != nil {
-			return fmt.Errorf("Failed to bring up the netlink %s :%v", netDevice[0], err)
-		}
-		err = netlink.LinkSetNsFd(netDeviceLink, int(netns.Fd()))
-		if err != nil {
-			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
-		}
 		contLink, err := netlink.LinkByName(netDevice[0])
 		if err != nil {
 			return err
@@ -213,6 +212,10 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 		err = netlink.LinkSetUp(contLink)
 		if err != nil {
 			return err
+		}
+		link, err := netlink.LinkByName(args.IfName)
+		if link == nil || err != nil {
+			return fmt.Errorf("Failed to rename the link  %s:%v", args.IfName, err)
 		}
 
 		return nil
