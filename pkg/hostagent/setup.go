@@ -146,7 +146,7 @@ func (*ClientRPC) SetupVeth(args *SetupVethArgs, result *SetupVethResult) error 
 				return fmt.Errorf("failed Ip based MAC address allocation for v4: %v", err)
 			}
 		}
-
+		fmt.Print("inside setup veth")
 		contVeth, err := netlink.LinkByName(args.IfName)
 		if err != nil {
 			return err
@@ -186,7 +186,6 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 		}
 		err = netlink.LinkSetDown(contLink)
 		fmt.Print("setting the link down")
-
 		if err != nil {
 			return fmt.Errorf("Failed to bring down the link for %s:%v", args.IfName, err)
 		}
@@ -195,7 +194,6 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 			return fmt.Errorf("Failed to rename the interface %s to vfrep:%v", args.IfName, err)
 		}
 		fmt.Print("setting the link name")
-
 		err = netlink.LinkSetUp(contLink)
 		if err != nil {
 			return fmt.Errorf("Failed to bring up the interface %s:%v", vfRep, err)
@@ -205,16 +203,14 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.sriovDevieId, err)
 		}
 		fmt.Print(" netDevice", netDevice)
-
 		// move Vf netdevice to pod's namespace
 		vfLink, err := netlink.LinkByName(netDevice[0])
 		err = netlink.LinkSetNsFd(vfLink, int(netns.Fd()))
 		if err != nil {
 			return fmt.Errorf("Failed to retreive netdevice %s:%v", args.sriovDevieId, err)
 		}
-		fmt.Print("fd int", int(netns.Fd()))
 		fmt.Print("netns", netns)
-
+		fmt.Print("fd int", int(netns.Fd()))
 		hostIface, err := netlink.LinkByName(vfRep)
 		if err != nil {
 			return err
@@ -393,10 +389,18 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 			//We are guaranteed to derive the MAC address from IPv4 if it is assigned
 			if ip.Address.IP != nil && ip.Address.IP.To4() != nil {
 				if metadata.Id.DevideId != "" {
+					logger.Debug("calling set up vf ")
 					iface.HostVethName, iface.Mac, err =
 						runSetupVf(iface.Sandbox, iface.Name, mtu, ip.Address.IP, metadata.Id.DevideId)
+					logger.Debug("HostVfName", iface.HostVethName)
+					logger.Debug("iface.Mac", iface.Mac)
+					if err != nil {
+						return nil, err
+					} else {
+						break
+					}
 				} else {
-
+					logger.Debug("calling setup veth ")
 					iface.HostVethName, iface.Mac, err =
 						runSetupVeth(iface.Sandbox, iface.Name, mtu, ip.Address.IP)
 					if err != nil {
@@ -409,6 +413,7 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 		}
 		// if no mac is assigned, set it to the default Mac.
 		if len(iface.Mac) == 0 {
+			logger.Debug("mac not assigned. callinf runSetupVeth ")
 			iface.HostVethName, iface.Mac, err =
 				runSetupVeth(iface.Sandbox, iface.Name, agent.config.InterfaceMtu, nil)
 			if err != nil {
