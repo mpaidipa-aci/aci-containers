@@ -177,11 +177,10 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 	}
 	//              fmt.Print("vfRep----", vfRep)
 	hostIface, err := netlink.LinkByName(vfRep)
-	if err != nil {
+	if hostIface == nil || err != nil {
 		return err
 	}
 	result.HostVethName = vfRep
-	result.Mac = hostIface.Attrs().HardwareAddr.String()
 	netDevice, err := sriovnet.GetNetDevicesFromPci(args.SriovDeviceId)
 	if err != nil {
 		return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
@@ -213,10 +212,17 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 		if err != nil {
 			return err
 		}
-		link, err := netlink.LinkByName(args.IfName)
-		if link == nil || err != nil {
-			return fmt.Errorf("Failed to rename the link  %s:%v", args.IfName, err)
+		if args.Ip.To4() != nil {
+			if err := ip.SetHWAddrByIP(args.IfName, args.Ip, nil); err != nil {
+				return fmt.Errorf("failed Ip based MAC address allocation for v4: %v", err)
+			}
 		}
+		contIface, err := netlink.LinkByName(args.IfName)
+		if err != nil {
+			return err
+		}
+
+		result.Mac = contIface.Attrs().HardwareAddr.String()
 
 		return nil
 	})
