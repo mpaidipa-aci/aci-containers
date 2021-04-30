@@ -27,7 +27,9 @@ if [ -w /mnt/cni-conf ]; then
    "type": "opflex-agent-cni",
    "ipam": {"type": "opflex-agent-cni-ipam"}
 }
+
 EOF
+ls /mnt/cni-conf/cni/net.d/
 fi
 
 if [  -z !=  $MULTUS ] && [ $MULTUS = "True" ]; then
