@@ -180,6 +180,10 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 	if hostIface == nil || err != nil {
 		return err
 	}
+	err = netlink.LinkSetUp(hostIface)
+	if err != nil {
+		return err
+	}
 	result.HostVethName = vfRep
 	netDevice, err := sriovnet.GetNetDevicesFromPci(args.SriovDeviceId)
 	if err != nil {
