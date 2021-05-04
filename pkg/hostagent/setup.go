@@ -401,25 +401,26 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 					logger.Debug("HostVfName", iface.HostVethName)
 					logger.Debug("iface.Mac", iface.Mac)
 					if err != nil {
-						return nil, err
+						fmt.Errorf("VF allocation failed :%v", err)
 					} else {
 						break
 					}
-				} else {
-					logger.Debug("calling setup veth ")
-					iface.HostVethName, iface.Mac, err =
-						runSetupVeth(iface.Sandbox, iface.Name, mtu, ip.Address.IP)
-					if err != nil {
-						return nil, err
-					} else {
-						break
+					if len(iface.Mac) == 0 {
+						logger.Debug("calling setup veth ")
+						iface.HostVethName, iface.Mac, err =
+							runSetupVeth(iface.Sandbox, iface.Name, mtu, ip.Address.IP)
+						if err != nil {
+							return nil, err
+						} else {
+							break
+						}
 					}
 				}
 			}
 		}
 		// if no mac is assigned, set it to the default Mac.
 		if len(iface.Mac) == 0 {
-			logger.Debug("mac not assigned. callinf runSetupVeth ")
+			logger.Debug("if no mac is assigned, calling setup veth again ")
 			iface.HostVethName, iface.Mac, err =
 				runSetupVeth(iface.Sandbox, iface.Name, agent.config.InterfaceMtu, nil)
 			if err != nil {
