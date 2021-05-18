@@ -423,7 +423,7 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 	}
 
 	podKey := makePodKey(metadata.Id.Namespace, metadata.Id.Pod)
-	logger.Debug("Setting up veth")
+	//	logger.Debug("Setting up veth")
 	if len(metadata.Ifaces) == 0 {
 		return nil, errors.New("No interfaces specified")
 	}
@@ -460,18 +460,18 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 			//We are guaranteed to derive the MAC address from IPv4 if it is assigned
 			if ip.Address.IP != nil && ip.Address.IP.To4() != nil {
 				if metadata.Id.DevideId != "" {
-					logger.Debug("calling set up vf ")
+					logger.Debug("setting up VF ")
 					iface.HostVethName, iface.Mac, iface.VfNetDevice, err =
 						runSetupVf(iface.Sandbox, iface.Name, mtu, ip.Address.IP, metadata.Id.DevideId)
-					logger.Debug("HostVfName", iface.HostVethName)
-					logger.Debug("iface.Mac", iface.Mac)
+					logger.Debug("VfRep :", iface.HostVethName)
+					logger.Debug("VfNetDevice :", iface.VfNetDevice)
 					if err != nil {
 						fmt.Errorf("VF allocation failed :%v", err)
 					} else {
 						break
 					}
 					if len(iface.Mac) == 0 {
-						logger.Debug("calling setup veth ")
+						logger.Debug("setting up Veth ")
 						iface.HostVethName, iface.Mac, err =
 							runSetupVeth(iface.Sandbox, iface.Name, mtu, ip.Address.IP)
 						if err != nil {
@@ -613,8 +613,7 @@ func (agent *HostAgent) unconfigureContainerIfaces(id *md.ContainerId) error {
 	logger.Debug("Clearing container interface")
 	for _, iface := range metadata.Ifaces {
 		if metadata.Id.DevideId != "" {
-			logger.Debug("Clearing container interface")
-			logger.Debug("netdevice", iface.VfNetDevice)
+			logger.Debug("renaming and moving the VF back to host's namespace")
 			err = runClearVf(iface.Sandbox, iface.Name, metadata.Id.DevideId, iface.VfNetDevice)
 			if err != nil {
 				logger.Error("Could not move VF to host's namespace: ", err)
