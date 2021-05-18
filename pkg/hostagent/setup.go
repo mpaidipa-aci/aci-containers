@@ -101,6 +101,7 @@ type SetupVethResult struct {
 type SetupVfResult struct {
 	HostVfName string
 	Mac        string
+	VfNetDev   string
 }
 
 func runSetupVeth(sandbox string, ifName string,
@@ -112,11 +113,11 @@ func runSetupVeth(sandbox string, ifName string,
 }
 
 func runSetupVf(sandbox string, ifName string,
-	mtu int, ip net.IP, sriovDeviceId string) (string, string, error) {
-	result := &SetupVethResult{}
+	mtu int, ip net.IP, sriovDeviceId string) (string, string, string, error) {
+	result := &SetupVfResult{}
 	err := PluginCloner.runPluginCmd("ClientRPC.SetupVf",
 		&SetupVfArgs{sandbox, ifName, mtu, ip, sriovDeviceId}, result)
-	return result.HostVethName, result.Mac, err
+	return result.HostVfName, result.Mac, result.VfNetDev, err
 }
 
 func (*ClientRPC) SetupVeth(args *SetupVethArgs, result *SetupVethResult) error {
@@ -156,7 +157,7 @@ func (*ClientRPC) SetupVeth(args *SetupVethArgs, result *SetupVethResult) error 
 	})
 }
 
-func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
+func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVfResult) error {
 	netns, err := ns.GetNS(args.Sandbox)
 	if err != nil {
 		return fmt.Errorf("failed to open netns %q: %v", args.Sandbox, err)
@@ -184,12 +185,13 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 	if err != nil {
 		return err
 	}
-	result.HostVethName = vfRep
+	result.HostVfName = vfRep
 	netDevice, err := sriovnet.GetNetDevicesFromPci(args.SriovDeviceId)
 	if err != nil {
 		return fmt.Errorf("Failed to retreive netdevice %s:%v", args.SriovDeviceId, err)
 	}
 	// move Vf netdevice to pod's namespace
+	result.VfNetDev = netDevice[0]
 	netDeviceLink, err := netlink.LinkByName(netDevice[0])
 	if err != nil {
 		return fmt.Errorf("Failed to bring up the netlink %s :%v", netDevice[0], err)
@@ -209,6 +211,11 @@ func (*ClientRPC) SetupVf(args *SetupVfArgs, result *SetupVethResult) error {
 			return err
 		}
 		err = netlink.LinkSetName(contLink, args.IfName)
+		if err != nil {
+			return err
+		}
+		//Set Mtu
+		err = netlink.LinkSetMTU(contLink, args.Mtu)
 		if err != nil {
 			return err
 		}
@@ -237,10 +244,24 @@ type ClearVethArgs struct {
 	IfName  string
 }
 
+type ClearVfArgs struct {
+	Sandbox       string
+	IfName        string
+	SriovDeviceId string
+	VfNetDev      string
+}
+
 func runClearVeth(sandbox string, ifName string) error {
 	ack := false
 	err := PluginCloner.runPluginCmd("ClientRPC.ClearVeth",
 		&ClearVethArgs{sandbox, ifName}, &ack)
+	return err
+}
+
+func runClearVf(sandbox string, ifName string, sriovDeviceid string, vfnetdev string) error {
+	ack := false
+	err := PluginCloner.runPluginCmd("ClientRPC.ClearVf",
+		&ClearVfArgs{sandbox, ifName, sriovDeviceid, vfnetdev}, &ack)
 	return err
 }
 
@@ -261,6 +282,46 @@ func (c *ClientRPC) ClearVeth(args *ClearVethArgs, ack *bool) error {
 		err = netlink.LinkDel(iface)
 		if err != nil {
 			return fmt.Errorf("failed to delete %q: %v", args.IfName, err)
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	*ack = true
+	return nil
+}
+
+func (c *ClientRPC) ClearVf(args *ClearVfArgs, ack *bool) error {
+	netns, err := ns.GetNS(args.Sandbox)
+	if err != nil {
+		return fmt.Errorf("failed to open netns %q: %v", args.Sandbox, err)
+	}
+	defer netns.Close()
+
+	currentNs, err := ns.GetCurrentNS()
+	if err != nil {
+		return fmt.Errorf("failed to open current netns: %v", err)
+	}
+	*ack = false
+
+	if err := netns.Do(func(_ ns.NetNS) error {
+		vfNetLink, err := netlink.LinkByName(args.IfName)
+		if err != nil {
+			return fmt.Errorf("failed to lookup %q: %v", args.IfName, err)
+		}
+		err = netlink.LinkSetDown(vfNetLink)
+		if err != nil {
+			return fmt.Errorf("failed to bring down Vf Netdevice link: %v", err)
+		}
+		err = netlink.LinkSetName(vfNetLink, args.VfNetDev)
+		if err != nil {
+			return err
+		}
+		err = netlink.LinkSetNsFd(vfNetLink, int(currentNs.Fd()))
+		if err != nil {
+			return fmt.Errorf("Failed to move Vf netdevice to host's namespace:%v", err)
 		}
 
 		return nil
@@ -400,7 +461,7 @@ func (agent *HostAgent) configureContainerIfaces(metadata *md.ContainerMetadata)
 			if ip.Address.IP != nil && ip.Address.IP.To4() != nil {
 				if metadata.Id.DevideId != "" {
 					logger.Debug("calling set up vf ")
-					iface.HostVethName, iface.Mac, err =
+					iface.HostVethName, iface.Mac, iface.VfNetDevice, err =
 						runSetupVf(iface.Sandbox, iface.Name, mtu, ip.Address.IP, metadata.Id.DevideId)
 					logger.Debug("HostVfName", iface.HostVethName)
 					logger.Debug("iface.Mac", iface.Mac)
@@ -551,12 +612,21 @@ func (agent *HostAgent) unconfigureContainerIfaces(id *md.ContainerId) error {
 
 	logger.Debug("Clearing container interface")
 	for _, iface := range metadata.Ifaces {
-		err = runClearVeth(iface.Sandbox, iface.Name)
-		if err != nil {
-			logger.Error("Could not clear Veth ports: ", err)
+		if metadata.Id.DevideId != "" {
+			logger.Debug("Clearing container interface")
+			logger.Debug("netdevice", iface.VfNetDevice)
+			err = runClearVf(iface.Sandbox, iface.Name, metadata.Id.DevideId, iface.VfNetDevice)
+			if err != nil {
+				logger.Error("Could not move VF to host's namespace: ", err)
+				return err
+			}
+		} else {
+			err = runClearVeth(iface.Sandbox, iface.Name)
+			if err != nil {
+				logger.Error("Could not clear Veth ports: ", err)
+			}
 		}
 	}
-
 	agent.env.CniDeviceDeleted(&podid, id)
 
 	logger.Info("Successfully unconfigured container interface")
