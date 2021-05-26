@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
+	netClientSet "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/client/clientset/versioned"
 	md "github.com/noironetworks/aci-containers/pkg/metadata"
 	nodeinfoclientset "github.com/noironetworks/aci-containers/pkg/nodeinfo/clientset/versioned"
 	qospolicyclset "github.com/noironetworks/aci-containers/pkg/qospolicy/clientset/versioned"
@@ -32,7 +33,6 @@ import (
 	snatglobalclset "github.com/noironetworks/aci-containers/pkg/snatglobalinfo/clientset/versioned"
 	snatlocalinfoclset "github.com/noironetworks/aci-containers/pkg/snatlocalinfo/clientset/versioned"
 	snatpolicyclset "github.com/noironetworks/aci-containers/pkg/snatpolicy/clientset/versioned"
-	netClientSet "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/client/clientset/versioned"
 )
 
 type Environment interface {
@@ -133,11 +133,11 @@ func NewK8sEnvironment(config *HostAgentConfig, log *logrus.Logger) (*K8sEnviron
 	}
 	netClient, err := netClientSet.NewForConfig(restconfig)
 	if err != nil {
-                log.Debug("Failed to intialize network attachment definition info client")
-                return nil, err
-        }
+		log.Debug("Failed to intialize network attachment definition info client")
+		return nil, err
+	}
 	return &K8sEnvironment{kubeClient: kubeClient, snatGlobalClient: snatGlobalClient,
-		nodeInfo: nodeInfo, snatPolicyClient: snatPolicyClient, qosPolicyClient: qosPolicyClient, rdConfig: rdConfig, snatLocalInfoClient: snatLocalInfoClient, 
+		nodeInfo: nodeInfo, snatPolicyClient: snatPolicyClient, qosPolicyClient: qosPolicyClient, rdConfig: rdConfig, snatLocalInfoClient: snatLocalInfoClient,
 		netClient: netClient}, nil
 }
 
@@ -162,7 +162,7 @@ func (env *K8sEnvironment) Init(agent *HostAgent) error {
 	env.agent.initDepPodIndex()
 	env.agent.initRCPodIndex()
 	env.agent.initEventPoster(env.kubeClient)
-	env.agent.initNetworkAttachmentDefinitionFromClient(env.netClient)
+	env.agent.initNetworkAttDefInformerFromClient(env.netClient)
 	return nil
 }
 
@@ -211,4 +211,3 @@ func (env *K8sEnvironment) CheckPodExists(metadataKey *string) (bool, error) {
 	_, exists, err := env.agent.podInformer.GetStore().GetByKey(*metadataKey)
 	return exists, err
 }
-

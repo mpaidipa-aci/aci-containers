@@ -50,10 +50,10 @@ type ClientInfo struct {
 //	}
 //
 //	agent.initNetworkAttachmentDefinitionFromClient(netAttClient)
-	//cont.netAttDefInformer.Run(stopCh)
+//cont.netAttDefInformer.Run(stopCh)
 //}
 
-func (agent *HostAgent) initNetworkAttachmentDefinitionFromClient(
+func (agent *HostAgent) initNetworkAttDefInformerFromClient(
 	netClientSet *netClient.Clientset) {
 
 	agent.log.Debug("running initNetworkAttachmentDefinitionFromClient")
@@ -64,20 +64,20 @@ func (agent *HostAgent) initNetworkAttachmentDefinitionFromClient(
 }
 
 func (agent *HostAgent) initNetworkAttachmentDefinitionInformerBase(listWatch *cache.ListWatch) {
-	agent.netAttDefInformer  = cache.NewSharedIndexInformer(
-			listWatch, &netpolicy.NetworkAttachmentDefinition{}, controller.NoResyncPeriodFunc(),
-			cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	agent.netAttDefInformer = cache.NewSharedIndexInformer(
+		listWatch, &netpolicy.NetworkAttachmentDefinition{}, controller.NoResyncPeriodFunc(),
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
 	agent.netAttDefInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				agent.networkAttDefAdded(obj)
-			},
-			UpdateFunc: func(oldobj interface{}, newobj interface{}) {
-				agent.networkAttDefChanged(oldobj, newobj)
-			},
-			DeleteFunc: func(obj interface{}) {
-				agent.networkAttDefDeleted(obj)
-			},
+		AddFunc: func(obj interface{}) {
+			agent.networkAttDefAdded(obj)
+		},
+		UpdateFunc: func(oldobj interface{}, newobj interface{}) {
+			agent.networkAttDefChanged(oldobj, newobj)
+		},
+		DeleteFunc: func(obj interface{}) {
+			agent.networkAttDefDeleted(obj)
+		},
 	})
 }
 
@@ -104,9 +104,9 @@ func (agent *HostAgent) getnetattKey(netdata *NetworkAttachmentData) string {
 }
 
 func (agent *HostAgent) networkAttDefChanged(oldobj interface{}, newobj interface{}) {
-//	ntd := newobj.(*netpolicy.NetworkAttachmentDefinition)
+	//	ntd := newobj.(*netpolicy.NetworkAttachmentDefinition)
 }
 
 func (agent *HostAgent) networkAttDefDeleted(obj interface{}) {
-//	ntd := obj.(*netpolicy.NetworkAttachmentDefinition)
+	//	ntd := obj.(*netpolicy.NetworkAttachmentDefinition)
 }
