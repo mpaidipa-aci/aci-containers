@@ -72,6 +72,7 @@ type HostAgent struct {
 	netPolPods            *index.PodSelectorIndex
 	depPods               *index.PodSelectorIndex
 	rcPods                *index.PodSelectorIndex
+	netAttDefInformer     cache.SharedIndexInformer
 	podNetAnnotation      string
 	podIps                *ipam.IpCache
 	usedIPs               map[string]string
@@ -100,6 +101,8 @@ type HostAgent struct {
 	servicetoPodUids map[string]map[string]struct{}
 	// reverse map to get ServiceIp's from poduid
 	podtoServiceUids map[string]map[string]string
+	//network attachment definition map
+	netattdefmap     map[string]*NetworkAttachmentData
 }
 
 type ServiceEndPointType interface {
@@ -158,6 +161,7 @@ func NewHostAgent(config *HostAgentConfig, env Environment, log *logrus.Logger) 
 		snatPolicyCache:       make(map[string]*snatpolicy.SnatPolicy),
 		servicetoPodUids:      make(map[string]map[string]struct{}),
 		podtoServiceUids:      make(map[string]map[string]string),
+		netattdefmap:          make(map[string]*NetworkAttachmentData),
 		syncQueue: workqueue.NewNamedRateLimitingQueue(
 			&workqueue.BucketRateLimiter{
 				Limiter: rate.NewLimiter(rate.Limit(10), int(10)),
