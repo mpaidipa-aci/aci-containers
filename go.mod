@@ -43,6 +43,7 @@ require (
 	k8s.io/kubectl v0.21.0
 	k8s.io/kubernetes v1.21.0
 	sigs.k8s.io/controller-runtime v0.6.1
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.1-0.20210510153419-66a699ae3b05
 )
 
 replace (
