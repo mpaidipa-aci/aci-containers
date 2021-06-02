@@ -16,9 +16,10 @@ package hostagent
 
 import (
 	netpolicy "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+//	v1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	netClient "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/client/clientset/versioned"
 	netattclient "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/client/clientset/versioned/typed/k8s.cni.cncf.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+//	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/controller"
@@ -57,11 +58,17 @@ func (agent *HostAgent) initNetworkAttDefInformerFromClient(
 	netClientSet *netClient.Clientset) {
 
 	agent.log.Debug("running initNetworkAttachmentDefinitionFromClient")
+	//list, err := netClientSet.K8sCniCncfIoV1().NetworkAttachmentDefinitions("default").List(context.TODO(), metav1.ListOptions{})
+	//if err != nil {
+	//	agent.log.Error("Error listing all network attachment definitions: %v", err)
+	//}
 	agent.initNetworkAttachmentDefinitionInformerBase(
 		cache.NewListWatchFromClient(
 			netClientSet.RESTClient(), "network-attachment-definitions",
-			metav1.NamespaceAll, fields.Everything()))
+			"default", fields.Everything()))
 }
+
+//*v1.NetworkAttachmentDefinitionList
 
 func (agent *HostAgent) initNetworkAttachmentDefinitionInformerBase(listWatch *cache.ListWatch) {
 	agent.netAttDefInformer = cache.NewSharedIndexInformer(
