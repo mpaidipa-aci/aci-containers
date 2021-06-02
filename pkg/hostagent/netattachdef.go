@@ -15,12 +15,15 @@
 package hostagent
 
 import (
+	"context"
 	netpolicy "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
-//	v1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+	//	v1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	netClient "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/client/clientset/versioned"
 	netattclient "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/client/clientset/versioned/typed/k8s.cni.cncf.io/v1"
-//	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/controller"
 )
@@ -41,36 +44,23 @@ type ClientInfo struct {
 	NetClient netattclient.K8sCniCncfIoV1Interface
 }
 
-//func (agent *HostAgent) netAttDefInit(stopCh <-chan struct{}) {
-//	agent.log.Debug("Initializing network-attachment-definition client")
-//	restconfig := agent.env.RESTConfig()
-//	netAttClient, err := netattclient.NewForConfig(restconfig)
-//	if err != nil {
-////		agent.log.Errorf("Failed to intialize network-attachment-definition client")
-//		return
-//	}
-//
-//	agent.initNetworkAttachmentDefinitionFromClient(netAttClient)
-//cont.netAttDefInformer.Run(stopCh)
-//}
-
 func (agent *HostAgent) initNetworkAttDefInformerFromClient(
 	netClientSet *netClient.Clientset) {
 
 	agent.log.Debug("running initNetworkAttachmentDefinitionFromClient")
-	//list, err := netClientSet.K8sCniCncfIoV1().NetworkAttachmentDefinitions("default").List(context.TODO(), metav1.ListOptions{})
-	//if err != nil {
-	//	agent.log.Error("Error listing all network attachment definitions: %v", err)
-	//}
 	agent.initNetworkAttachmentDefinitionInformerBase(
-		cache.NewListWatchFromClient(
-			netClientSet.RESTClient(), "network-attachment-definitions",
-			"default", fields.Everything()))
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return netClientSet.K8sCniCncfIoV1().NetworkAttachmentDefinitions(metav1.NamespaceAll).List(context.TODO(), options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return netClientSet.K8sCniCncfIoV1().NetworkAttachmentDefinitions(metav1.NamespaceAll).Watch(context.TODO(), options)
+			},
+		})
 }
 
-//*v1.NetworkAttachmentDefinitionList
-
 func (agent *HostAgent) initNetworkAttachmentDefinitionInformerBase(listWatch *cache.ListWatch) {
+	agent.log.Debug("running initNetworkAttachmentDefinitionBase")
 	agent.netAttDefInformer = cache.NewSharedIndexInformer(
 		listWatch, &netpolicy.NetworkAttachmentDefinition{}, controller.NoResyncPeriodFunc(),
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
