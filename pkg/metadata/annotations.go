@@ -67,3 +67,6 @@ const CompEgAnnotation = "opflex.cisco.com/computed-endpoint-group"
 
 // Computed security groups for pod
 const CompSgAnnotation = "opflex.cisco.com/computed-security-group"
+
+// Network attachment definition annotation for pod
+const NetAttDefAnnotation = "opflex.cisco.com/default-networks"
