@@ -15,6 +15,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/grpc-ecosystem/grpc-gateway v1.14.1 // indirect
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.0
 	github.com/mattn/goveralls v0.0.8 // indirect
 	github.com/natefinch/pie v0.0.0-20170715172608-9a0d72014007
 	github.com/noironetworks/aci-containers/pkg/ipam v0.0.0-20210416053915-d6dec2cca336
@@ -41,9 +42,9 @@ require (
 	k8s.io/client-go v0.21.0
 	k8s.io/code-generator v0.21.0
 	k8s.io/kubectl v0.21.0
+	k8s.io/kubelet v0.21.1
 	k8s.io/kubernetes v1.21.0
 	sigs.k8s.io/controller-runtime v0.6.1
-	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.1.0
 )
 
 replace (

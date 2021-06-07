@@ -488,6 +488,10 @@ func (agent *HostAgent) podChangedLocked(podobj interface{}) {
 	epAttributes["namespace"] = pod.ObjectMeta.Namespace
 
 	agent.epChanged(&epUuid, &epMetaKey, &epGroup, secGroup, qpGroup, epAttributes, logger)
+
+	if pod.ObjectMeta.Annotations[metadata.NetAttDefAnnotation] != "" {
+		agent.getNetAttachment(pod)
+	}
 }
 
 func (agent *HostAgent) epChanged(epUuid *string, epMetaKey *string, epGroup *metadata.OpflexGroup,
