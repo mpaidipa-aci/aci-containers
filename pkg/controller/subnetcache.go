@@ -25,7 +25,7 @@ import (
 func (cont *AciController) SubnetChanged(obj apicapi.ApicObject, aciVrfDn string) {
 	subnetDn := obj.GetAttrStr("dn")
 	subnetIp := obj.GetAttrStr("ip")
-	cont.log.Debug("SubnetChanged for dn: ", subnetDn)
+	//cont.log.Debug("SubnetChanged for dn: ", subnetDn)
 	if _, ok := cont.apicConn.CachedSubnetDns[subnetDn]; !ok {
 		cont.UpdateSubnetDnCache(subnetDn, subnetIp, aciVrfDn)
 		cont.scheduleRdConfig()
@@ -44,7 +44,7 @@ func (cont *AciController) SubnetDeleted(dn string) {
 }
 
 func (cont *AciController) UpdateSubnetDnCache(subnetDn string, subnetIp string, aciVrfDn string) {
-	cont.log.Debug("aciVrfDn: ", aciVrfDn, "; Processing SubnetDn: ", subnetDn)
+	//cont.log.Debug("aciVrfDn: ", aciVrfDn, "; Processing SubnetDn: ", subnetDn)
 	subnetDelimiter := "/subnet"
 	subnetParentDn := strings.Split(subnetDn, subnetDelimiter)[0]
 	var inCache = false
@@ -64,7 +64,7 @@ func (cont *AciController) UpdateSubnetDnCache(subnetDn string, subnetIp string,
 }
 
 func (cont *AciController) BuildSubnetDnCache(dn string, aciVrfDn string) {
-	cont.log.Debug("aciVrfDn: ", aciVrfDn, "; Processing dn: ", dn)
+	//cont.log.Debug("aciVrfDn: ", aciVrfDn, "; Processing dn: ", dn)
 	var vrfBdDns []string
 	var vrfEpgDns []string
 
@@ -106,7 +106,7 @@ func (cont *AciController) BuildSubnetDnCache(dn string, aciVrfDn string) {
 		}
 	}
 	sort.Strings(vrfBdDns)
-	cont.log.Debug("aciVrfBdDns: ", vrfBdDns)
+	//cont.log.Debug("aciVrfBdDns: ", vrfBdDns)
 
 	apicresp, err = cont.apicConn.GetApicResponse(epgUri)
 	if err != nil {
@@ -115,7 +115,7 @@ func (cont *AciController) BuildSubnetDnCache(dn string, aciVrfDn string) {
 	for _, obj := range apicresp.Imdata {
 		for _, body := range obj {
 			epgParentDn, ok := body.Attributes["tDn"].(string)
-			cont.log.Debug("epgParentDn: ", epgParentDn)
+			//cont.log.Debug("epgParentDn: ", epgParentDn)
 			if !ok || !cont.contains(vrfBdDns, epgParentDn) {
 				continue
 			}
@@ -127,7 +127,7 @@ func (cont *AciController) BuildSubnetDnCache(dn string, aciVrfDn string) {
 		}
 	}
 	sort.Strings(vrfEpgDns)
-	cont.log.Debug("aciVrfEpgDns: ", vrfEpgDns)
+	//cont.log.Debug("aciVrfEpgDns: ", vrfEpgDns)
 	apicresp, err = cont.apicConn.GetApicResponse(SubnetUri)
 	if err != nil {
 		return
@@ -140,13 +140,13 @@ func (cont *AciController) BuildSubnetDnCache(dn string, aciVrfDn string) {
 			}
 			subnetParentDn := strings.Split(subnetDn, subnetDelimiter)[0]
 			subnetIp, _ := body.Attributes["ip"].(string)
-			cont.log.Debug("subnetDn: ", subnetDn, " subnetParentDn: ", subnetParentDn, " subnetIp: ", subnetIp)
+			//cont.log.Debug("subnetDn: ", subnetDn, " subnetParentDn: ", subnetParentDn, " subnetIp: ", subnetIp)
 			if cont.contains(vrfBdDns, subnetParentDn) || cont.contains(vrfEpgDns, subnetParentDn) {
 				cont.apicConn.CachedSubnetDns[subnetDn] = subnetIp
 			}
 		}
 	}
-	cont.log.Debug("cachedSubnetsDns Map:  ", cont.apicConn.CachedSubnetDns)
+	//cont.log.Debug("cachedSubnetsDns Map:  ", cont.apicConn.CachedSubnetDns)
 	return
 }
 
