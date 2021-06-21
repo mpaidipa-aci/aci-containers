@@ -96,9 +96,11 @@ func (agent *HostAgent) EPRegAdd(ep *opflexEndpoint) bool {
 	remEP.ObjectMeta.Name = agent.getPodIFName(ep.Attributes["namespace"], ep.Attributes["vm-name"])
 
 	podif, err := agent.crdClient.PodIFs("kube-system").Get(context.TODO(), remEP.ObjectMeta.Name, metav1.GetOptions{})
+	agent.log.Debugf("podif: %s found for pod", remEP.ObjectMeta.Name)
 	if err != nil {
 		// create podif
 		_, err := agent.crdClient.PodIFs("kube-system").Create(context.TODO(), remEP, metav1.CreateOptions{})
+		agent.log.Debugf("podif: %s created for pod", remEP.ObjectMeta.Name)
 		if err != nil {
 			logrus.Errorf("Create error %v, podif: %+v", err, remEP)
 			return true
@@ -108,6 +110,7 @@ func (agent *HostAgent) EPRegAdd(ep *opflexEndpoint) bool {
 		// update it
 		podif.Status = remEP.Status
 		_, err := agent.crdClient.PodIFs("kube-system").Update(context.TODO(), podif, metav1.UpdateOptions{})
+		agent.log.Debugf("podif: %s updated for pod", remEP.ObjectMeta.Name)
 		if err != nil {
 			logrus.Errorf("Update error %v, podif: %+v", err, remEP)
 			return true
@@ -294,6 +297,7 @@ func (agent *HostAgent) syncEps() bool {
 			ep = append(ep, val)
 		}
 		opflexEps[k] = ep
+		agent.log.Debugf("Synced endpoint %v", ep)
 	}
 	agent.indexMutex.Unlock()
 
@@ -382,12 +386,14 @@ func (agent *HostAgent) syncEps() bool {
 			opflexEpLogger(agent.log, ep).Info("Adding endpoint")
 			epfile := agent.FormEPFilePath(ep.Uuid)
 			_, err = writeEp(epfile, ep)
+			opflexEpLogger(agent.log, ep).Info("wrote endpoint")
 			if err != nil {
 				opflexEpLogger(agent.log, ep).
 					Error("Error writing EP file: ", err)
 				needRetry = true
 			} else {
 				needRetry = agent.EPRegAdd(ep)
+				opflexEpLogger(agent.log, ep).Info("Added EPRegAdd")
 			}
 		}
 	}
