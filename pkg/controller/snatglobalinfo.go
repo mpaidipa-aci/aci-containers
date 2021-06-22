@@ -248,6 +248,10 @@ func (cont *AciController) handleSnatNodeInfo(nodeinfo *nodeinfo.NodeInfo) bool 
 			}
 			cont.log.Debug("SnatPolicy Name: ", name)
 			if len(snatpolicy.SnatIp) != 0 {
+				nodeSNATEntryFound := cont.checkIfPolicyApplied(nodename, snatpolicy.ExpandedSnatIps)
+				if nodeSNATEntryFound {
+					continue
+				}
 				snatIp, portrange, alloc := cont.getIpAndPortRange(nodename, snatpolicy, "")
 				cont.log.Debug("SnatIP and Port range: ", snatIp, portrange)
 				if alloc == false {
@@ -264,6 +268,10 @@ func (cont *AciController) handleSnatNodeInfo(nodeinfo *nodeinfo.NodeInfo) bool 
 				updated = true
 			} else {
 				snatIps := cont.getServiceIps(snatpolicy)
+				nodeSNATEntryFound := cont.checkIfPolicyApplied(nodename, snatIps)
+				if nodeSNATEntryFound {
+					continue
+				}
 				cont.log.Debug("Service Ips: ", snatIps)
 				for _, snatip := range snatIps {
 					snatIp, portrange, alloc := cont.getIpAndPortRange(nodename, snatpolicy, snatip)
@@ -361,6 +369,18 @@ func (cont *AciController) updateGlobalInfoforPolicy(portrange snatglobalinfo.Po
 	cont.snatGlobalInfoCache[snatIp][nodename] = glinfo
 	cont.log.Info("Node name and globalinfo: ", nodename, glinfo)
 	cont.indexMutex.Unlock()
+}
+
+func (cont *AciController) checkIfPolicyApplied(nodename string, snatIps []string) bool {
+	var nodeSNATEntryFound bool
+	for _, snatip := range snatIps {
+		if policyEntries, ok := cont.snatGlobalInfoCache[snatip]; ok {
+			if _, nodepresent := policyEntries[nodename]; nodepresent {
+				nodeSNATEntryFound = true
+                        }
+                }
+        }
+        return nodeSNATEntryFound
 }
 
 func (cont *AciController) getIpAndPortRange(nodename string, snatpolicy *ContSnatPolicy, serviceIp string) (string,
